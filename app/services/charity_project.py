@@ -3,12 +3,14 @@ from http import HTTPStatus
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud.base import CRUDCharityProject, CRUDInvestment
+from app.crud.base import CRUDCharityProject, process_investment
 from app.models.charity_project import CharityProject
 from app.schemas.charity_project import (
     CharityProjectCreate,
     CharityProjectUpdate,
 )
+
+
 DELETE_FORBIDDEN_DETAIL = (
     'В проект были внесены средства, не подлежит удалению!'
 )
@@ -38,7 +40,7 @@ async def create_charity_project(
         description=data.description,
         full_amount=data.full_amount,
     )
-    await CRUDInvestment.process_investment(session)
+    await process_investment(session)
     return await CRUDCharityProject.refresh(session, project)
 
 

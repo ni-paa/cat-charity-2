@@ -53,6 +53,18 @@ class CRUDCharityProject(CRUDBase):
         return list(result.scalars().all())
 
     @classmethod
+    async def get_multi_open_ordered_by_create_date(
+        cls, session: AsyncSession
+    ) -> List[CharityProject]:
+        """Открытые проекты, по дате создания."""
+        result = await session.execute(
+            select(CharityProject)
+            .where(CharityProject.fully_invested.is_(False))
+            .order_by(CharityProject.create_date)
+        )
+        return list(result.scalars().all())
+
+    @classmethod
     async def get_by_name(cls, session: AsyncSession, name: str):
         """Получить проект по имени."""
         query_result = await session.execute(
@@ -134,6 +146,18 @@ class CRUDDonation(CRUDBase):
         return list(result.scalars().all())
 
     @classmethod
+    async def get_multi_open_ordered_by_create_date(
+        cls, session: AsyncSession
+    ) -> List[Donation]:
+        """Пожертвования с остатком средств, по дате создания."""
+        result = await session.execute(
+            select(Donation)
+            .where(Donation.fully_invested.is_(False))
+            .order_by(Donation.create_date)
+        )
+        return list(result.scalars().all())
+
+    @classmethod
     async def create(
         cls,
         session: AsyncSession,
@@ -152,49 +176,39 @@ class CRUDDonation(CRUDBase):
         return donation
 
 
-class CRUDInvestment:
-    """Распределение свободных средств пожертвований по открытым проектам."""
+async def process_investment(session: AsyncSession) -> None:
+    """Распределить свободные средства пожертвований по открытым проектам."""
+    projects = await CRUDCharityProject.get_multi_open_ordered_by_create_date(
+        session
+    )
+    donations = await CRUDDonation.get_multi_open_ordered_by_create_date(
+        session
+    )
 
-    @classmethod
-    async def process_investment(cls, session: AsyncSession) -> None:
-        projects_result = await session.execute(
-            select(CharityProject)
-            .where(CharityProject.fully_invested.is_(False))
-            .order_by(CharityProject.create_date)
-        )
-        projects = projects_result.scalars().all()
+    for project in projects:
+        for donation in donations:
+            if donation.fully_invested:
+                continue
+            if project.fully_invested:
+                break
 
-        donations_result = await session.execute(
-            select(Donation)
-            .where(Donation.fully_invested.is_(False))
-            .order_by(Donation.create_date)
-        )
-        donations = donations_result.scalars().all()
+            donation_remaining = (
+                donation.full_amount - donation.invested_amount
+            )
+            project_remaining = (
+                project.full_amount - project.invested_amount
+            )
 
-        for project in projects:
-            for donation in donations:
-                if donation.fully_invested:
-                    continue
-                if project.fully_invested:
-                    break
+            invest_amount = min(donation_remaining, project_remaining)
 
-                donation_remaining = (
-                    donation.full_amount - donation.invested_amount
-                )
-                project_remaining = (
-                    project.full_amount - project.invested_amount
-                )
+            project.invested_amount += invest_amount
+            if project.invested_amount >= project.full_amount:
+                project.fully_invested = True
+                project.close_date = datetime.now()
 
-                invest_amount = min(donation_remaining, project_remaining)
+            donation.invested_amount += invest_amount
+            if donation.invested_amount >= donation.full_amount:
+                donation.fully_invested = True
+                donation.close_date = datetime.now()
 
-                project.invested_amount += invest_amount
-                if project.invested_amount >= project.full_amount:
-                    project.fully_invested = True
-                    project.close_date = datetime.now()
-
-                donation.invested_amount += invest_amount
-                if donation.invested_amount >= donation.full_amount:
-                    donation.fully_invested = True
-                    donation.close_date = datetime.now()
-
-        await session.commit()
+    await session.commit()
