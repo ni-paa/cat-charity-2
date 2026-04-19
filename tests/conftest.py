@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 
 try:
-    from app.core.config import Settings
+    from app.core.config import Settings  # noqa: F401
 except Exception as error:
     raise AssertionError(
         'При импорте настроек приложения `Settings` из модуля '
@@ -63,7 +63,7 @@ pytest_plugins = [
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite://"
 
-# Create async engine
+# Асинхронный движок БД для тестов
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},

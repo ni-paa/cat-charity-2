@@ -12,8 +12,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Подключение метаданных моделей для автоматической генерации миграций
-from app.core.db import Base
-from app.models import CharityProject, Donation, User  # noqa
+from app.core.db import Base  # noqa: E402
+from app.models import CharityProject, Donation, User  # noqa: E402, F401
 
 target_metadata = Base.metadata
 

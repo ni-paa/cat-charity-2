@@ -43,7 +43,10 @@ async def small_fully_invested_charity_project(freezer, mixer):
         description='Wanna buy you project',
         full_amount=100,
         fully_invested=True,
-        close_date=datetime.strptime('2010-10-11T00:00:00Z', '%Y-%m-%dT%H:%M:%SZ'),
+        close_date=datetime.strptime(
+            '2010-10-11T00:00:00Z',
+            '%Y-%m-%dT%H:%M:%SZ',
+        ),
         create_date=datetime.now(),
     )
     await mixer.params['session'].commit()
@@ -75,7 +78,10 @@ async def closed_charity_project(freezer, mixer):
         full_amount=100,
         invested_amount=100,
         fully_invested=True,
-        close_date=datetime.strptime('2010-10-11T00:00:00Z', '%Y-%m-%dT%H:%M:%SZ'),
+        close_date=datetime.strptime(
+            '2010-10-11T00:00:00Z',
+            '%Y-%m-%dT%H:%M:%SZ',
+        ),
         create_date=datetime.now(),
     )
     await mixer.params['session'].commit()

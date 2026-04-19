@@ -1,8 +1,8 @@
 """Таблица user и связь пожертвований с пользователем.
 
-Revision ID: 2b
-Revises: 1a
-Create Date: 2025-04-18 12:00:00.000000
+Идентификатор ревизии: 2b
+Предыдущая ревизия: 1a
+Дата создания: 2025-04-18 12:00:00.000000
 
 """
 from alembic import op
@@ -42,7 +42,10 @@ def upgrade():
 
 def downgrade():
     with op.batch_alter_table('donation', schema=None) as batch_op:
-        batch_op.drop_constraint('fk_donation_user_id_user', type_='foreignkey')
+        batch_op.drop_constraint(
+            'fk_donation_user_id_user',
+            type_='foreignkey',
+        )
         batch_op.drop_column('user_id')
 
     op.drop_index(op.f('ix_user_email'), table_name='user')

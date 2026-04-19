@@ -1,12 +1,11 @@
 from typing import List
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_async_session
 from app.core.user import current_superuser, current_user
-from app.models.donation import Donation
+from app.crud.base import CRUDDonation, CRUDInvestment
 from app.models.user import User
 from app.schemas.donation import (
     DonationCreate,
@@ -14,8 +13,6 @@ from app.schemas.donation import (
     DonationForUser,
     DonationFullInfoDB,
 )
-from app.services.investment import process_investment
-
 router = APIRouter()
 
 
@@ -25,12 +22,7 @@ async def get_my_donations(
     user: User = Depends(current_user),
 ):
     """Показать пожертвования текущего пользователя."""
-    result = await session.execute(
-        select(Donation)
-        .where(Donation.user_id == user.id)
-        .order_by(Donation.create_date)
-    )
-    return result.scalars().all()
+    return await CRUDDonation.get_multi_for_user_ordered(session, user.id)
 
 
 @router.get('/', response_model=List[DonationFullInfoDB])
@@ -39,10 +31,7 @@ async def get_all_donations(
     _: User = Depends(current_superuser),
 ):
     """Показать список всех пожертвований (только суперпользователь)."""
-    result_all_donations = await session.execute(
-        select(Donation).order_by(Donation.create_date)
-    )
-    return result_all_donations.scalars().all()
+    return await CRUDDonation.get_multi_ordered_by_create_date(session)
 
 
 @router.post('/', response_model=DonationDB)
@@ -52,15 +41,13 @@ async def create_donation(
     user: User = Depends(current_user),
 ):
     """Создать пожертвование."""
-    donation = Donation(
+    donation = await CRUDDonation.create(
+        session,
         full_amount=donation_in.full_amount,
         comment=donation_in.comment,
         user_id=user.id,
     )
-    session.add(donation)
-    await session.flush()
 
-    await process_investment(session)
+    await CRUDInvestment.process_investment(session)
 
-    await session.refresh(donation)
-    return donation
+    return await CRUDDonation.refresh(session, donation)
